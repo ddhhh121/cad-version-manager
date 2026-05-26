@@ -41,6 +41,7 @@
               class="action-link compare-link"
               @click.stop
             >与最新对比</router-link>
+            <button class="action-link delete-link" @click.stop="confirmDeleteVersion(v)">删除</button>
           </div>
         </div>
       </div>
@@ -52,17 +53,27 @@
         :visible="showWarning"
         @dismiss="showWarning = false"
       />
+
+      <ConfirmDialog
+        :visible="deleteTarget.visible"
+        title="删除版本"
+        :message="`确定要删除「v${deleteTarget.item?.version_number || ''}」吗？此操作不可撤销。`"
+        @confirm="doDeleteVersion"
+        @cancel="deleteTarget.visible = false"
+      />
     </template>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/index.js'
 import OldVersionWarning from '../components/OldVersionWarning.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const projectId = route.params.projectId
 const seriesId = route.params.seriesId
 const series = ref(null)
@@ -73,6 +84,7 @@ const error = ref('')
 const uploadError = ref('')
 const showWarning = ref(false)
 const warningData = ref({})
+const deleteTarget = ref({ visible: false, item: null })
 
 // Zoom: 0=纯文字, 1=小缩略图, 2=中缩略图, 3=大缩略图
 const zoom = ref(1)
@@ -149,6 +161,25 @@ async function onUpload(e) {
   e.target.value = ''
 }
 
+function confirmDeleteVersion(v) {
+  deleteTarget.value = { visible: true, item: v }
+}
+
+async function doDeleteVersion() {
+  const v = deleteTarget.value.item
+  deleteTarget.value.visible = false
+  if (!v) return
+  try {
+    const result = await api.deleteVersion(v.id)
+    if (result.series_deleted) {
+      router.push(`/project/${projectId}`)
+    } else {
+      versions.value = await api.listVersions(seriesId)
+      series.value = await api.getSeries(seriesId)
+    }
+  } catch (e) { /* ignore */ }
+}
+
 function thumbnailUrl(vid) { return api.getThumbnailUrl(vid) }
 function downloadUrl(vid) { return api.getDownloadUrl(vid) }
 function formatDate(d) {
@@ -192,6 +223,8 @@ function formatSize(bytes) {
 .action-link { font-size: 12px; color: #1a1a2e; text-decoration: none; }
 .action-link:hover { text-decoration: underline; }
 .compare-link { color: #e67e22; }
+.delete-link { color: #e74c3c; background: none; border: none; cursor: pointer; font-size: 12px; padding: 0; }
+.delete-link:hover { text-decoration: underline; }
 
 /* ── zoom 0: 纯文字 ── */
 .zoom-0 .version-row { padding: 6px 12px; margin-bottom: 2px; }

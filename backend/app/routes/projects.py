@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+import shutil
+
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
+from sqlalchemy import desc as sa_desc, asc as sa_asc
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Project, DrawingSeries, DrawingVersion
-from app.schemas import ProjectCreate, ProjectOut, UploadResult, DrawingVersionOut
+from app.schemas import ProjectCreate, ProjectUpdate, ProjectOut, UploadResult, DrawingVersionOut
 from app.config import UPLOAD_DIR
 from app.services.file_service import validate_file, compute_hash, save_file
 from app.services.drawing_service import extract_drawing_number, extract_metadata_from_dxf
@@ -12,8 +15,31 @@ router = APIRouter(tags=["projects"])
 
 
 @router.get("/projects", response_model=list[ProjectOut])
-def list_projects(db: Session = Depends(get_db)):
-    projects = db.query(Project).order_by(Project.created_at.desc()).all()
+def list_projects(
+    search: str | None = Query(None),
+    sort_by: str | None = Query(None),
+    order: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Project)
+    if search:
+        q = q.filter(Project.name.ilike(f"%{search}%"))
+
+    valid_sort = {"name", "created_at", "series_count"}
+    sort_col = sort_by if sort_by in valid_sort else "created_at"
+    sort_dir = order if order in ("asc", "desc") else "desc"
+
+    if sort_col == "name":
+        q = q.order_by(sa_asc(Project.name) if sort_dir == "asc" else sa_desc(Project.name))
+    elif sort_col == "created_at":
+        q = q.order_by(sa_asc(Project.created_at) if sort_dir == "asc" else sa_desc(Project.created_at))
+    else:
+        q = q.order_by(Project.created_at.desc())
+
+    projects = q.all()
+
+    if sort_col == "series_count":
+        projects.sort(key=lambda p: len(p.series_list), reverse=(sort_dir == "desc"))
     result = []
     for p in projects:
         result.append(ProjectOut(
@@ -171,3 +197,33 @@ def upload_drawing(
         filename=file.filename,
         file_size=len(content),
     )
+
+
+@router.put("/projects/{project_id}", response_model=ProjectOut)
+def update_project(project_id: int, body: ProjectUpdate, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    if body.name is not None:
+        project.name = body.name
+    if body.description is not None:
+        project.description = body.description
+    db.commit()
+    db.refresh(project)
+    return ProjectOut(
+        id=project.id, name=project.name, description=project.description,
+        created_at=project.created_at, series_count=len(project.series_list),
+    )
+
+
+@router.delete("/projects/{project_id}")
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    project_dir = UPLOAD_DIR / "projects" / str(project_id)
+    if project_dir.exists():
+        shutil.rmtree(project_dir)
+    db.delete(project)
+    db.commit()
+    return {"status": "ok"}

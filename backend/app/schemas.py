@@ -19,6 +19,11 @@ class ProjectOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProjectUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = None
+
+
 # ── DrawingSeries ──
 
 class DrawingSeriesOut(BaseModel):

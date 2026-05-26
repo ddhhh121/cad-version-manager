@@ -1,8 +1,10 @@
+import shutil
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import DrawingVersion
+from app.models import DrawingSeries, DrawingVersion
 from app.schemas import DrawingVersionOut, ChangeNoteUpdate, CompareResult, FieldDiff
 from app.config import UPLOAD_DIR
 
@@ -122,3 +124,42 @@ def download_version(version_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="版本不存在")
     full_path = UPLOAD_DIR / v.file_path
     return FileResponse(full_path, filename=v.filename)
+
+
+@router.delete("/versions/{version_id}")
+def delete_version(version_id: int, db: Session = Depends(get_db)):
+    v = db.query(DrawingVersion).filter(DrawingVersion.id == version_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="版本不存在")
+
+    series_id = v.series_id
+    project_id = v.series.project_id
+
+    file_path = UPLOAD_DIR / v.file_path
+    if file_path.exists():
+        file_path.unlink()
+
+    if v.thumbnail_path:
+        thumb_path = UPLOAD_DIR / v.thumbnail_path
+        if thumb_path.exists():
+            thumb_path.unlink()
+
+    remaining = db.query(DrawingVersion).filter(
+        DrawingVersion.series_id == series_id,
+        DrawingVersion.id != version_id,
+    ).count()
+
+    db.delete(v)
+
+    series_deleted = False
+    if remaining == 0:
+        series = db.query(DrawingSeries).filter(DrawingSeries.id == series_id).first()
+        if series:
+            series_dir = UPLOAD_DIR / "projects" / str(project_id) / str(series_id)
+            if series_dir.exists():
+                shutil.rmtree(series_dir)
+            db.delete(series)
+            series_deleted = True
+
+    db.commit()
+    return {"status": "ok", "series_deleted": series_deleted}

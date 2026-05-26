@@ -1,8 +1,11 @@
+import shutil
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import DrawingSeries, DrawingVersion
 from app.schemas import DrawingSeriesOut, DrawingVersionOut
+from app.config import UPLOAD_DIR
 
 router = APIRouter(tags=["series"])
 
@@ -45,3 +48,16 @@ def list_versions(series_id: int, db: Session = Depends(get_db)):
     if not series:
         raise HTTPException(status_code=404, detail="图纸系列不存在")
     return [_version_to_out(v) for v in series.versions]
+
+
+@router.delete("/series/{series_id}")
+def delete_series(series_id: int, db: Session = Depends(get_db)):
+    series = db.query(DrawingSeries).filter(DrawingSeries.id == series_id).first()
+    if not series:
+        raise HTTPException(status_code=404, detail="图纸系列不存在")
+    series_dir = UPLOAD_DIR / "projects" / str(series.project_id) / str(series.id)
+    if series_dir.exists():
+        shutil.rmtree(series_dir)
+    db.delete(series)
+    db.commit()
+    return {"status": "ok"}
