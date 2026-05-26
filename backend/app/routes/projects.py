@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Project, DrawingSeries, DrawingVersion
-from app.schemas import ProjectCreate, ProjectOut, UploadResult
+from app.schemas import ProjectCreate, ProjectOut, UploadResult, DrawingVersionOut
 from app.config import UPLOAD_DIR
 from app.services.file_service import validate_file, compute_hash, save_file
 from app.services.drawing_service import extract_drawing_number, extract_metadata_from_dxf
@@ -41,18 +41,42 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/projects/{project_id}", response_model=ProjectOut)
+@router.get("/projects/{project_id}")
 def get_project(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
-    return ProjectOut(
-        id=project.id,
-        name=project.name,
-        description=project.description,
-        created_at=project.created_at,
-        series_count=len(project.series_list),
-    )
+
+    series_out = []
+    for s in project.series_list:
+        versions = s.versions
+        latest = None
+        if versions:
+            v = versions[0]
+            latest = DrawingVersionOut(
+                id=v.id, series_id=v.series_id,
+                version_number=v.version_number, filename=v.filename,
+                file_hash=v.file_hash, file_size=v.file_size,
+                thumbnail_path=v.thumbnail_path,
+                metadata_json=v.metadata_json or {},
+                change_note=v.change_note or "",
+                created_at=v.created_at,
+            )
+        series_out.append({
+            "id": s.id, "project_id": s.project_id,
+            "drawing_number": s.drawing_number,
+            "created_at": s.created_at,
+            "latest_version": latest,
+            "version_count": len(versions),
+        })
+
+    return {
+        "id": project.id, "name": project.name,
+        "description": project.description,
+        "created_at": project.created_at,
+        "series_count": len(project.series_list),
+        "series_list": series_out,
+    }
 
 
 @router.post("/projects/{project_id}/upload", response_model=UploadResult)

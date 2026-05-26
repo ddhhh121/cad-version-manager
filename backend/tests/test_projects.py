@@ -22,7 +22,10 @@ def test_get_project(client):
     pid = resp.json()["id"]
     resp = client.get(f"/api/projects/{pid}")
     assert resp.status_code == 200
-    assert resp.json()["name"] == "测试"
+    data = resp.json()
+    assert data["name"] == "测试"
+    assert "series_list" in data
+    assert data["series_list"] == []
 
 
 def test_get_project_404(client):
