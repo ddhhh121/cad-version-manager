@@ -19,9 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Route imports will be added in later tasks:
-# from app.routes import projects, series, versions
-# app.include_router(projects.router, prefix="/api")
+from app.routes import projects
+app.include_router(projects.router, prefix="/api")
+# from app.routes import series, versions  (to be added in later tasks)
 # app.include_router(series.router, prefix="/api")
 # app.include_router(versions.router, prefix="/api")
 
