@@ -1,5 +1,5 @@
 <template>
-  <div @wheel="onWheel">
+  <div ref="rootEl">
     <router-link :to="`/project/${projectId}`" class="back-link">← 返回项目</router-link>
 
     <div v-if="loading">加载中...</div>
@@ -67,6 +67,7 @@ const projectId = route.params.projectId
 const seriesId = route.params.seriesId
 const series = ref(null)
 const versions = ref([])
+const rootEl = ref(null)
 const loading = ref(true)
 const error = ref('')
 const uploadError = ref('')
@@ -95,7 +96,15 @@ function onWheel(e) {
   hintTimer = setTimeout(() => { showZoomHint.value = false }, 1000)
 }
 
-onUnmounted(() => clearTimeout(hintTimer))
+onMounted(() => {
+  load()
+  rootEl.value?.addEventListener('wheel', onWheel, { passive: false })
+})
+
+onUnmounted(() => {
+  clearTimeout(hintTimer)
+  rootEl.value?.removeEventListener('wheel', onWheel)
+})
 
 const latestVersionNumber = computed(() =>
   versions.value.length > 0 ? versions.value[0].version_number : 0
@@ -152,7 +161,6 @@ function formatSize(bytes) {
   return (bytes / 1048576).toFixed(1) + ' MB'
 }
 
-onMounted(load)
 </script>
 
 <style scoped>
