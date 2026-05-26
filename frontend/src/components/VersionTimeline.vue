@@ -116,7 +116,7 @@ function formatSize(bytes) {
   return (bytes / 1048576).toFixed(1) + ' MB'
 }
 
-watch(() => props.series, loadVersions)
+watch(() => props.series, loadVersions, { immediate: true })
 </script>
 
 <style scoped>
