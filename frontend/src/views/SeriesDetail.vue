@@ -138,24 +138,24 @@ onMounted(load)
 .empty { color: #999; text-align: center; padding: 60px; }
 .error { color: #e74c3c; padding: 8px 0; margin-bottom: 8px; font-size: 14px; }
 
-.version-row { background: #fff; border-radius: 8px; padding: 18px 20px; margin-bottom: 10px; border: 1px solid #e8e8e8; cursor: pointer; }
+.version-row { background: #fff; border-radius: 6px; padding: 10px 14px; margin-bottom: 6px; border: 1px solid #e8e8e8; cursor: pointer; }
 .version-row:hover { background: #fcfcfc; }
 .version-row.is-latest { border-color: #27ae60; background: #f0faf4; }
 .version-row.is-latest:hover { background: #e8f6ec; }
 
-.v-label { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
-.current-badge { background: #27ae60; color: #fff; font-size: 11px; padding: 2px 10px; border-radius: 10px; margin-left: 8px; }
+.v-label { font-weight: 600; font-size: 12px; margin-bottom: 6px; }
+.current-badge { background: #27ae60; color: #fff; font-size: 10px; padding: 1px 7px; border-radius: 8px; margin-left: 6px; }
 
-.v-body { display: flex; gap: 14px; }
-.v-thumb { width: 160px; height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; flex-shrink: 0; }
-.v-thumb-placeholder { width: 160px; height: 120px; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 4px; color: #999; font-size: 12px; flex-shrink: 0; }
-.v-info { font-size: 14px; }
-.v-filename { font-weight: 500; margin-bottom: 4px; }
-.v-meta { color: #999; font-size: 13px; }
-.v-note { color: #555; font-style: italic; margin-top: 4px; font-size: 13px; }
+.v-body { display: flex; gap: 10px; }
+.v-thumb { width: 100px; height: 75px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; flex-shrink: 0; }
+.v-thumb-placeholder { width: 100px; height: 75px; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 4px; color: #999; font-size: 11px; flex-shrink: 0; }
+.v-info { font-size: 13px; }
+.v-filename { font-weight: 500; margin-bottom: 2px; }
+.v-meta { color: #999; font-size: 12px; }
+.v-note { color: #555; font-style: italic; margin-top: 2px; font-size: 12px; }
 
-.v-actions { margin-top: 12px; display: flex; gap: 18px; }
-.action-link { font-size: 13px; color: #1a1a2e; text-decoration: none; }
+.v-actions { margin-top: 8px; display: flex; gap: 14px; }
+.action-link { font-size: 12px; color: #1a1a2e; text-decoration: none; }
 .action-link:hover { text-decoration: underline; }
 .compare-link { color: #e67e22; }
 </style>
