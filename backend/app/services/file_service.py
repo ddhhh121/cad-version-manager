@@ -26,4 +26,4 @@ def save_file(project_id: int, series_id: int, version_number: int,
     dir_path.mkdir(parents=True, exist_ok=True)
     file_path = dir_path / filename
     file_path.write_bytes(content)
-    return str(rel / filename)
+    return str(Path(rel) / filename)
