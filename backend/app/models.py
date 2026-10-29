@@ -55,6 +55,18 @@ class DrawingVersion(Base):
     thumbnail_path = Column(String(1000), nullable=True)
     metadata_json = Column(JSON, default=dict)
     change_note = Column(Text, default="")
+    tags = Column(JSON, default=list)
     created_at = Column(DateTime, default=utcnow)
 
     series = relationship("DrawingSeries", back_populates="versions")
+
+
+class DeletionLog(Base):
+    __tablename__ = "deletion_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(50), nullable=False)  # "project" | "series" | "version"
+    entity_id = Column(Integer, nullable=False)
+    entity_name = Column(String(500), nullable=False)
+    entity_data = Column(JSON, default=dict)
+    deleted_at = Column(DateTime, default=utcnow)

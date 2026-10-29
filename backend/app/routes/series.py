@@ -3,7 +3,7 @@ import shutil
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import DrawingSeries, DrawingVersion
+from app.models import DrawingSeries, DrawingVersion, DeletionLog
 from app.schemas import DrawingSeriesOut, DrawingVersionOut
 from app.config import UPLOAD_DIR
 
@@ -21,6 +21,7 @@ def _version_to_out(v: DrawingVersion) -> DrawingVersionOut:
         thumbnail_path=v.thumbnail_path,
         metadata_json=v.metadata_json or {},
         change_note=v.change_note or "",
+        tags=v.tags or [],
         created_at=v.created_at,
     )
 
@@ -55,6 +56,16 @@ def delete_series(series_id: int, db: Session = Depends(get_db)):
     series = db.query(DrawingSeries).filter(DrawingSeries.id == series_id).first()
     if not series:
         raise HTTPException(status_code=404, detail="图纸系列不存在")
+
+    # 记录删除日志
+    log = DeletionLog(
+        entity_type="series",
+        entity_id=series.id,
+        entity_name=series.drawing_number,
+        entity_data={"project_id": series.project_id},
+    )
+    db.add(log)
+
     series_dir = UPLOAD_DIR / "projects" / str(series.project_id) / str(series.id)
     if series_dir.exists():
         shutil.rmtree(series_dir)

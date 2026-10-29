@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import DrawingSeries, DrawingVersion
-from app.schemas import DrawingVersionOut, ChangeNoteUpdate, CompareResult, FieldDiff
+from app.models import DrawingSeries, DrawingVersion, DeletionLog
+from app.schemas import DrawingVersionOut, ChangeNoteUpdate, TagsUpdate, CompareResult, FieldDiff
 from app.config import UPLOAD_DIR
+from app.services.preview_service import generate_preview
 
 router = APIRouter(tags=["versions"])
 
@@ -22,6 +23,7 @@ def _version_to_out(v: DrawingVersion) -> DrawingVersionOut:
         thumbnail_path=v.thumbnail_path,
         metadata_json=v.metadata_json or {},
         change_note=v.change_note or "",
+        tags=v.tags or [],
         created_at=v.created_at,
     )
 
@@ -52,6 +54,20 @@ def update_change_note(
     if not v:
         raise HTTPException(status_code=404, detail="版本不存在")
     v.change_note = body.change_note
+    db.commit()
+    return {"status": "ok"}
+
+
+@router.put("/versions/{version_id}/tags")
+def update_tags(
+    version_id: int,
+    body: TagsUpdate,
+    db: Session = Depends(get_db),
+):
+    v = db.query(DrawingVersion).filter(DrawingVersion.id == version_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="版本不存在")
+    v.tags = body.tags
     db.commit()
     return {"status": "ok"}
 
@@ -135,6 +151,25 @@ def delete_version(version_id: int, db: Session = Depends(get_db)):
     series_id = v.series_id
     project_id = v.series.project_id
 
+    # 记录删除日志
+    log = DeletionLog(
+        entity_type="version",
+        entity_id=v.id,
+        entity_name=v.filename,
+        entity_data={
+            "series_id": v.series_id,
+            "version_number": v.version_number,
+            "filename": v.filename,
+            "file_hash": v.file_hash,
+            "file_path": v.file_path,
+            "file_size": v.file_size,
+            "thumbnail_path": v.thumbnail_path,
+            "metadata_json": v.metadata_json or {},
+            "change_note": v.change_note or "",
+        },
+    )
+    db.add(log)
+
     file_path = UPLOAD_DIR / v.file_path
     if file_path.exists():
         file_path.unlink()
@@ -163,3 +198,17 @@ def delete_version(version_id: int, db: Session = Depends(get_db)):
 
     db.commit()
     return {"status": "ok", "series_deleted": series_deleted}
+
+
+@router.get("/versions/{version_id}/preview")
+def preview_version(version_id: int, db: Session = Depends(get_db)):
+    v = db.query(DrawingVersion).filter(DrawingVersion.id == version_id).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="版本不存在")
+
+    full_path = UPLOAD_DIR / v.file_path
+    if not full_path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    result = generate_preview(str(full_path))
+    return result

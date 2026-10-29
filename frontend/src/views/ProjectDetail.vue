@@ -22,10 +22,19 @@
           {{ project.name }}
           <button class="btn-edit-icon" @click="startRename" title="重命名">✎</button>
         </h1>
-        <label class="upload-btn">
-          上传图纸
-          <input type="file" accept=".dwg,.dxf" hidden @change="onUpload" />
-        </label>
+        <div class="header-actions">
+          <div class="export-dropdown" @click.stop="showExportMenu = !showExportMenu">
+            <button class="export-btn">导出 ▾</button>
+            <div v-if="showExportMenu" class="export-menu">
+              <a :href="exportUrl('excel')" class="export-item">导出 Excel</a>
+              <a :href="exportUrl('pdf')" class="export-item">导出 PDF</a>
+            </div>
+          </div>
+          <label class="upload-btn">
+            上传图纸
+            <input type="file" accept=".dwg,.dxf" hidden @change="onUpload" />
+          </label>
+        </div>
       </div>
 
       <div v-if="uploadError" class="error">{{ uploadError }}</div>
@@ -78,6 +87,7 @@ const editingTitle = ref(false)
 const editName = ref('')
 const titleInput = ref(null)
 const deleteTarget = reactive({ visible: false, item: null })
+const showExportMenu = ref(false)
 
 async function loadProject() {
   loading.value = true
@@ -134,6 +144,13 @@ async function onUpload(e) {
 
 function thumbnailUrl(vid) { return api.getThumbnailUrl(vid) }
 
+function exportUrl(format) {
+  return api.getExportProjectUrl(project.value.id, format)
+}
+
+// 点击外部关闭导出菜单
+document.addEventListener('click', () => { showExportMenu.value = false })
+
 onMounted(loadProject)
 </script>
 
@@ -142,8 +159,16 @@ onMounted(loadProject)
 
 .project-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .project-header h1 { font-size: 24px; }
+.header-actions { display: flex; gap: 12px; align-items: center; }
 .upload-btn { background: #1a1a2e; color: #fff; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; }
 .upload-btn:hover { background: #2a2a4e; }
+
+.export-dropdown { position: relative; }
+.export-btn { background: #f5f5f5; border: 1px solid #ddd; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.export-btn:hover { background: #eee; }
+.export-menu { position: absolute; top: 100%; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; min-width: 140px; }
+.export-item { display: block; padding: 10px 16px; color: #333; text-decoration: none; font-size: 14px; }
+.export-item:hover { background: #f5f5f5; }
 
 .edit-title-row { display: flex; gap: 4px; align-items: center; }
 .edit-title-input { font-size: 24px; font-weight: 700; border: 1px solid #1a1a2e; border-radius: 4px; padding: 2px 8px; width: 300px; }
@@ -180,4 +205,16 @@ onMounted(loadProject)
 
 .latest-tag { background: #27ae60; color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 8px; flex-shrink: 0; }
 .arrow { color: #ccc; font-size: 14px; flex-shrink: 0; }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .project-header { flex-direction: column; gap: 12px; align-items: stretch; }
+  .project-header h1 { font-size: 18px; word-break: break-all; }
+  .header-actions { flex-wrap: wrap; }
+  .upload-btn, .export-btn { flex: 1; text-align: center; }
+  .edit-title-input { width: 100%; font-size: 18px; }
+  .series-card { padding: 10px; }
+  .card-thumb { width: 48px; height: 36px; }
+  .drawing-number { font-size: 13px; }
+}
 </style>

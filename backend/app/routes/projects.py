@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
 from sqlalchemy import desc as sa_desc, asc as sa_asc
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Project, DrawingSeries, DrawingVersion
+from app.models import Project, DrawingSeries, DrawingVersion, DeletionLog
 from app.schemas import ProjectCreate, ProjectUpdate, ProjectOut, UploadResult, DrawingVersionOut
 from app.config import UPLOAD_DIR
 from app.services.file_service import validate_file, compute_hash, save_file
@@ -86,6 +86,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
                 thumbnail_path=v.thumbnail_path,
                 metadata_json=v.metadata_json or {},
                 change_note=v.change_note or "",
+                tags=v.tags or [],
                 created_at=v.created_at,
             )
         series_out.append({
@@ -221,6 +222,16 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
+
+    # 记录删除日志
+    log = DeletionLog(
+        entity_type="project",
+        entity_id=project.id,
+        entity_name=project.name,
+        entity_data={"description": project.description},
+    )
+    db.add(log)
+
     project_dir = UPLOAD_DIR / "projects" / str(project_id)
     if project_dir.exists():
         shutil.rmtree(project_dir)

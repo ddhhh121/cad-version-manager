@@ -49,6 +49,7 @@ class DrawingVersionOut(BaseModel):
     thumbnail_path: str | None = None
     metadata_json: dict = {}
     change_note: str = ""
+    tags: list[str] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -56,6 +57,10 @@ class DrawingVersionOut(BaseModel):
 
 class ChangeNoteUpdate(BaseModel):
     change_note: str
+
+
+class TagsUpdate(BaseModel):
+    tags: list[str]
 
 
 # ── Upload response ──
@@ -86,3 +91,16 @@ class CompareResult(BaseModel):
     hash_match: bool
     size_diff_percent: float
     diffs: list[FieldDiff]
+
+
+# ── DeletionLog ──
+
+class DeletionLogOut(BaseModel):
+    id: int
+    entity_type: str
+    entity_id: int
+    entity_name: str
+    entity_data: dict = {}
+    deleted_at: datetime
+
+    model_config = {"from_attributes": True}
